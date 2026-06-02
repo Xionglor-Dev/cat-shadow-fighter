@@ -5,6 +5,8 @@ const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 const FLOOR_Y = 430;
 const GRAVITY = 0.75;
+const JUMP_DRAW_HEIGHT = 292;
+const ATTACK_DRAW_HEIGHT = 305;
 
 const keys = new Set();
 const pressedKeys = new Set();
@@ -14,58 +16,72 @@ const sprites = {
   walk: new Image(),
   run: new Image(),
   punch: new Image(),
+  kick: new Image(),
   jump: new Image(),
 };
 
-sprites.idle.src = "assets/IDLE-man.png";
-sprites.walk.src = "assets/walk-man.png";
-sprites.run.src = "assets/run-man.png";
-sprites.punch.src = "assets/punch-man.png";
-sprites.jump.src = "assets/jump-man.png";
+sprites.idle.src = "assets/cat-man/idle.png";
+sprites.walk.src = "assets/cat-man/walk.png";
+sprites.run.src = "assets/cat-man/run.png";
+sprites.punch.src = "assets/cat-man/punch.png";
+sprites.kick.src = "assets/cat-man/kick.png";
+sprites.jump.src = "assets/cat-man/jump.png";
 
 const animations = {
   idle: {
     image: sprites.idle,
     frameDuration: 140,
-    scale: 0.68,
+    scale: 2.34,
     frames: [
-      frame(0, 150, 340, 490),
-      frame(345, 150, 325, 490),
-      frame(680, 145, 320, 500),
-      frame(995, 150, 340, 490),
+      frame(0, 1, 88, 130),
+      frame(108, 0, 88, 131),
+      frame(227, 0, 75, 131),
+      frame(323, 1, 91, 130),
     ],
   },
   walk: {
     image: sprites.walk,
     frameDuration: 115,
-    scale: 1.06,
+    scale: 2.36,
     frames: [
-      frame(20, 225, 285, 335),
-      frame(300, 225, 275, 335),
-      frame(560, 225, 270, 335),
-      frame(820, 225, 260, 335),
-      frame(1075, 225, 285, 335),
+      frame(0, 1, 113, 129),
+      frame(128, 1, 107, 128),
+      frame(243, 1, 106, 129),
+      frame(359, 1, 105, 129),
+      frame(477, 1, 113, 128),
     ],
   },
   run: {
     image: sprites.run,
     frameDuration: 90,
-    scale: 0.91,
+    scale: 2.7,
     frames: [
-      frame(42, 248, 330, 380),
-      frame(382, 265, 320, 365),
-      frame(700, 258, 350, 360),
-      frame(1046, 270, 320, 355),
+      frame(0, 0, 108, 113),
+      frame(121, 7, 99, 111),
+      frame(232, 4, 112, 110),
+      frame(355, 7, 98, 111),
     ],
   },
   punch: {
     image: sprites.punch,
     frameDuration: 95,
-    scale: 0.74,
+    scale: 2.65,
     frames: [
-      frame(40, 170, 360, 440),
-      frame(425, 170, 455, 440),
-      frame(885, 170, 491, 440),
+      frame(0, 1, 90, 115, ATTACK_DRAW_HEIGHT / 115, 0.44),
+      frame(106, 2, 125, 113, ATTACK_DRAW_HEIGHT / 113, 0.39),
+      frame(231, 0, 144, 115, ATTACK_DRAW_HEIGHT / 115, 0.33),
+    ],
+  },
+  kick: {
+    image: sprites.kick,
+    frameDuration: 80,
+    scale: 1,
+    frames: [
+      frame(0, 18, 86, 115, ATTACK_DRAW_HEIGHT / 115, 0.42),
+      frame(129, 13, 108, 119, ATTACK_DRAW_HEIGHT / 119, 0.3),
+      frame(256, 10, 88, 123, ATTACK_DRAW_HEIGHT / 123, 0.48),
+      frame(389, 0, 123, 132, ATTACK_DRAW_HEIGHT / 132, 0.32),
+      frame(516, 17, 89, 115, ATTACK_DRAW_HEIGHT / 115, 0.49),
     ],
   },
   jump: {
@@ -73,11 +89,11 @@ const animations = {
     frameDuration: 120,
     scale: 1,
     frames: [
-      frame(19, 429, 267, 292, 1.2),
-      frame(306, 247, 278, 376, 0.86),
-      frame(599, 96, 216, 364, 0.94),
-      frame(817, 181, 276, 415, 0.77),
-      frame(1051, 424, 300, 299, 1.17),
+      frame(0, 54, 96, 103, JUMP_DRAW_HEIGHT / 103),
+      frame(121, 50, 101, 107, JUMP_DRAW_HEIGHT / 107),
+      frame(249, 12, 98, 111, JUMP_DRAW_HEIGHT / 111),
+      frame(371, 0, 102, 112, JUMP_DRAW_HEIGHT / 112),
+      frame(495, 53, 98, 104, JUMP_DRAW_HEIGHT / 104),
     ],
   },
 };
@@ -93,11 +109,12 @@ const player = {
   action: "idle",
   actionTimer: 0,
   actionDuration: 0,
+  lockedAction: "idle",
   onGround: true,
 };
 
-function frame(x, y, width, height, scale = null) {
-  return { x, y, width, height, scale };
+function frame(x, y, width, height, scale = null, anchorX = 0.5) {
+  return { x, y, width, height, scale, anchorX };
 }
 
 function drawBackground() {
@@ -137,14 +154,20 @@ function updatePlayer() {
   const speed = running ? player.runSpeed : player.walkSpeed;
 
   if (player.actionTimer > 0) {
-    player.actionTimer -= 1;
-    player.action = "punch";
+    player.action = player.lockedAction;
     updatePhysics();
+    player.actionTimer -= 1;
     return;
   }
 
   if (pressedKeys.has("KeyF") && player.onGround) {
-    startPunch();
+    startTimedAction("punch", 7);
+    updatePhysics();
+    return;
+  }
+
+  if (pressedKeys.has("KeyG") && player.onGround) {
+    startTimedAction("kick", 6);
     updatePhysics();
     return;
   }
@@ -185,16 +208,18 @@ function updatePhysics() {
   }
 }
 
-function startPunch() {
-  player.action = "punch";
-  player.actionTimer = 24;
-  player.actionDuration = 24;
+function startTimedAction(action, ticksPerFrame) {
+  player.action = action;
+  player.lockedAction = action;
+  player.actionDuration = animations[action].frames.length * ticksPerFrame;
+  player.actionTimer = player.actionDuration;
 }
 
 function drawCatMan() {
   const animation = animations[player.action];
+  const isTimedAction = player.actionDuration > 0 && player.action === player.lockedAction;
   const frameIndex =
-    player.actionTimer > 0 && player.actionDuration > 0
+    isTimedAction
       ? Math.min(
           animation.frames.length - 1,
           Math.floor((1 - player.actionTimer / player.actionDuration) * animation.frames.length)
@@ -206,6 +231,7 @@ function drawCatMan() {
   const drawScale = source.scale ?? animation.scale;
   const drawWidth = source.width * drawScale;
   const drawHeight = source.height * drawScale;
+  const anchorX = source.anchorX ?? 0.5;
   const drawY = player.y - drawHeight;
 
   ctx.save();
@@ -219,7 +245,7 @@ function drawCatMan() {
       source.y,
       source.width,
       source.height,
-      -drawWidth / 2,
+      -drawWidth * anchorX,
       drawY,
       drawWidth,
       drawHeight
@@ -231,7 +257,7 @@ function drawCatMan() {
       source.y,
       source.width,
       source.height,
-      player.x - drawWidth / 2,
+      player.x - drawWidth * anchorX,
       drawY,
       drawWidth,
       drawHeight
@@ -273,7 +299,7 @@ function drawLabel() {
 
   ctx.fillStyle = "#cbd5e1";
   ctx.font = "14px Arial";
-  ctx.fillText("A/D walk  |  Shift + A/D run  |  F punch  |  W jump", WIDTH / 2, 124);
+  ctx.fillText("A/D walk  |  Shift + A/D run  |  F punch  |  G kick  |  W jump", WIDTH / 2, 124);
 }
 
 function gameLoop() {
@@ -314,7 +340,7 @@ window.addEventListener("keydown", (event) => {
 
   keys.add(event.code);
 
-  if (["KeyW", "KeyA", "KeyD", "KeyF", "ShiftLeft", "ShiftRight"].includes(event.code)) {
+  if (["KeyW", "KeyA", "KeyD", "KeyF", "KeyG", "ShiftLeft", "ShiftRight"].includes(event.code)) {
     event.preventDefault();
   }
 });
