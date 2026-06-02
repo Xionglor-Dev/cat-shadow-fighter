@@ -5,20 +5,48 @@ const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 const FLOOR_Y = 430;
 
-const catMan = new Image();
-catMan.src = "assets/IDLE-man.png";
+const keys = new Set();
 
-const idleFrames = [
-  frame(0, 150, 340, 490),
-  frame(345, 150, 325, 490),
-  frame(680, 145, 320, 500),
-  frame(995, 150, 340, 490),
-];
+const sprites = {
+  idle: new Image(),
+  walk: new Image(),
+};
+
+sprites.idle.src = "assets/IDLE-man.png";
+sprites.walk.src = "assets/walk-man.png";
+
+const animations = {
+  idle: {
+    image: sprites.idle,
+    frameDuration: 140,
+    scale: 0.68,
+    frames: [
+      frame(0, 150, 340, 490),
+      frame(345, 150, 325, 490),
+      frame(680, 145, 320, 500),
+      frame(995, 150, 340, 490),
+    ],
+  },
+  walk: {
+    image: sprites.walk,
+    frameDuration: 115,
+    scale: 1,
+    frames: [
+      frame(20, 225, 285, 335),
+      frame(300, 225, 275, 335),
+      frame(560, 225, 270, 335),
+      frame(820, 225, 260, 335),
+      frame(1075, 225, 285, 335),
+    ],
+  },
+};
 
 const player = {
   x: WIDTH / 2,
   y: FLOOR_Y,
-  scale: 0.68,
+  speed: 3.4,
+  facing: 1,
+  action: "idle",
 };
 
 function frame(x, y, width, height) {
@@ -52,25 +80,63 @@ function drawShadow() {
   ctx.fill();
 }
 
-function drawCatManIdle() {
-  const frameIndex = Math.floor(performance.now() / 140) % idleFrames.length;
-  const source = idleFrames[frameIndex];
-  const drawWidth = source.width * player.scale;
-  const drawHeight = source.height * player.scale;
-  const drawX = player.x - drawWidth / 2;
+function updatePlayer() {
+  const movingLeft = keys.has("KeyA");
+  const movingRight = keys.has("KeyD");
+
+  if (movingLeft && !movingRight) {
+    player.x -= player.speed;
+    player.facing = -1;
+  }
+
+  if (movingRight && !movingLeft) {
+    player.x += player.speed;
+    player.facing = 1;
+  }
+
+  player.x = Math.max(95, Math.min(WIDTH - 95, player.x));
+  player.action = movingLeft || movingRight ? "walk" : "idle";
+}
+
+function drawCatMan() {
+  const animation = animations[player.action];
+  const frameIndex = Math.floor(performance.now() / animation.frameDuration) % animation.frames.length;
+  const source = animation.frames[frameIndex];
+  const drawWidth = source.width * animation.scale;
+  const drawHeight = source.height * animation.scale;
   const drawY = player.y - drawHeight;
 
-  ctx.drawImage(
-    catMan,
-    source.x,
-    source.y,
-    source.width,
-    source.height,
-    drawX,
-    drawY,
-    drawWidth,
-    drawHeight
-  );
+  ctx.save();
+
+  if (player.facing === -1) {
+    ctx.translate(player.x, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(
+      animation.image,
+      source.x,
+      source.y,
+      source.width,
+      source.height,
+      -drawWidth / 2,
+      drawY,
+      drawWidth,
+      drawHeight
+    );
+  } else {
+    ctx.drawImage(
+      animation.image,
+      source.x,
+      source.y,
+      source.width,
+      source.height,
+      player.x - drawWidth / 2,
+      drawY,
+      drawWidth,
+      drawHeight
+    );
+  }
+
+  ctx.restore();
 }
 
 function drawLabel() {
@@ -81,17 +147,45 @@ function drawLabel() {
 
   ctx.fillStyle = "#93c5fd";
   ctx.font = "16px Arial";
-  ctx.fillText("Idle animation only", WIDTH / 2, 98);
+  ctx.fillText(player.action.toUpperCase(), WIDTH / 2, 98);
 }
 
 function gameLoop() {
+  updatePlayer();
   drawBackground();
   drawShadow();
-  drawCatManIdle();
+  drawCatMan();
   drawLabel();
   requestAnimationFrame(gameLoop);
 }
 
-catMan.addEventListener("load", () => {
-  requestAnimationFrame(gameLoop);
+function startWhenReady() {
+  let loadedImages = 0;
+  const totalImages = Object.keys(sprites).length;
+
+  function markLoaded() {
+    loadedImages += 1;
+
+    if (loadedImages === totalImages) {
+      requestAnimationFrame(gameLoop);
+    }
+  }
+
+  for (const image of Object.values(sprites)) {
+    if (image.complete) {
+      markLoaded();
+    } else {
+      image.addEventListener("load", markLoaded);
+    }
+  }
+}
+
+window.addEventListener("keydown", (event) => {
+  keys.add(event.code);
 });
+
+window.addEventListener("keyup", (event) => {
+  keys.delete(event.code);
+});
+
+startWhenReady();
