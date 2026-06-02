@@ -10,10 +10,14 @@ const keys = new Set();
 const sprites = {
   idle: new Image(),
   walk: new Image(),
+  run: new Image(),
+  punch: new Image(),
 };
 
 sprites.idle.src = "assets/IDLE-man.png";
 sprites.walk.src = "assets/walk-man.png";
+sprites.run.src = "assets/run-man.png";
+sprites.punch.src = "assets/punch-man.png";
 
 const animations = {
   idle: {
@@ -39,14 +43,38 @@ const animations = {
       frame(1075, 225, 285, 335),
     ],
   },
+  run: {
+    image: sprites.run,
+    frameDuration: 90,
+    scale: 0.92,
+    frames: [
+      frame(42, 248, 330, 380),
+      frame(382, 265, 320, 365),
+      frame(700, 258, 350, 360),
+      frame(1046, 270, 320, 355),
+    ],
+  },
+  punch: {
+    image: sprites.punch,
+    frameDuration: 95,
+    scale: 0.72,
+    frames: [
+      frame(40, 170, 360, 440),
+      frame(425, 170, 455, 440),
+      frame(885, 170, 491, 440),
+    ],
+  },
 };
 
 const player = {
   x: WIDTH / 2,
   y: FLOOR_Y,
-  speed: 3.4,
+  walkSpeed: 3.4,
+  runSpeed: 6.4,
   facing: 1,
   action: "idle",
+  actionTimer: 0,
+  actionDuration: 0,
 };
 
 function frame(x, y, width, height) {
@@ -83,24 +111,49 @@ function drawShadow() {
 function updatePlayer() {
   const movingLeft = keys.has("KeyA");
   const movingRight = keys.has("KeyD");
+  const running = (keys.has("ShiftLeft") || keys.has("ShiftRight")) && (movingLeft || movingRight);
+  const speed = running ? player.runSpeed : player.walkSpeed;
+
+  if (player.actionTimer > 0) {
+    player.actionTimer -= 1;
+    player.action = "punch";
+    return;
+  }
+
+  if (keys.has("KeyF")) {
+    startPunch();
+    return;
+  }
 
   if (movingLeft && !movingRight) {
-    player.x -= player.speed;
+    player.x -= speed;
     player.facing = -1;
   }
 
   if (movingRight && !movingLeft) {
-    player.x += player.speed;
+    player.x += speed;
     player.facing = 1;
   }
 
-  player.x = Math.max(95, Math.min(WIDTH - 95, player.x));
-  player.action = movingLeft || movingRight ? "walk" : "idle";
+  player.x = Math.max(120, Math.min(WIDTH - 120, player.x));
+  player.action = running ? "run" : movingLeft || movingRight ? "walk" : "idle";
+}
+
+function startPunch() {
+  player.action = "punch";
+  player.actionTimer = 24;
+  player.actionDuration = 24;
 }
 
 function drawCatMan() {
   const animation = animations[player.action];
-  const frameIndex = Math.floor(performance.now() / animation.frameDuration) % animation.frames.length;
+  const frameIndex =
+    player.actionTimer > 0 && player.actionDuration > 0
+      ? Math.min(
+          animation.frames.length - 1,
+          Math.floor((1 - player.actionTimer / player.actionDuration) * animation.frames.length)
+        )
+      : Math.floor(performance.now() / animation.frameDuration) % animation.frames.length;
   const source = animation.frames[frameIndex];
   const drawWidth = source.width * animation.scale;
   const drawHeight = source.height * animation.scale;
@@ -148,6 +201,10 @@ function drawLabel() {
   ctx.fillStyle = "#93c5fd";
   ctx.font = "16px Arial";
   ctx.fillText(player.action.toUpperCase(), WIDTH / 2, 98);
+
+  ctx.fillStyle = "#cbd5e1";
+  ctx.font = "14px Arial";
+  ctx.fillText("A/D walk  |  Shift + A/D run  |  F punch", WIDTH / 2, 124);
 }
 
 function gameLoop() {
