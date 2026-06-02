@@ -38,7 +38,7 @@ p {
 }
 
 .status {
-  min-width: 86px;
+  min-width: 260px;
   padding: 9px 12px;
   border: 1px solid #334155;
   border-radius: 6px;
@@ -46,6 +46,7 @@ p {
   color: #93c5fd;
   font-size: 14px;
   font-weight: 800;
+  line-height: 1.25;
   text-align: center;
 }
 
@@ -57,4 +58,15 @@ canvas {
   border-radius: 8px;
   background: #070a10;
   box-shadow: 0 22px 60px rgba(0, 0, 0, 0.42);
+}
+
+@media (max-width: 720px) {
+  .top-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .status {
+    min-width: 0;
+  }
 }
