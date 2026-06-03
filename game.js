@@ -38,6 +38,8 @@ const spriteSources = {
     jump: "assets/cat-girl/jump.png",
     punch: "assets/cat-girl/punch.png",
     kick: "assets/cat-girl/kick.png",
+    dashAttack: "assets/cat-girl/dash-attack.png",
+    energyWave: "assets/cat-girl/energy-wave.png",
     hitHurt: "assets/cat-girl/hit-hurt.png",
     ko: "assets/cat-girl/ko.png",
   },
@@ -166,6 +168,18 @@ const animationSets = {
       scaledFrame(387, 0, 127, 128, ATTACK_DRAW_HEIGHT, 0.37),
       scaledFrame(518, 0, 96, 128, ATTACK_DRAW_HEIGHT, 0.5),
     ]),
+    dashAttack: animation(sprites.catGirl.dashAttack, 80, [
+      scaledFrame(0, 0, 100, 119, ATTACK_DRAW_HEIGHT, 0.46),
+      scaledFrame(208, 0, 117, 119, ATTACK_DRAW_HEIGHT, 0.46),
+      scaledFrame(380, 0, 140, 119, ATTACK_DRAW_HEIGHT, 0.41),
+    ]),
+    energyWave: animation(sprites.catGirl.energyWave, 90, [
+      scaledFrame(0, 0, 112, 126, ATTACK_DRAW_HEIGHT, 0.41),
+      scaledFrame(128, 0, 112, 126, ATTACK_DRAW_HEIGHT, 0.53),
+      scaledFrame(256, 0, 116, 126, ATTACK_DRAW_HEIGHT, 0.5),
+      scaledFrame(378, 0, 142, 126, ATTACK_DRAW_HEIGHT, 0.39),
+      scaledFrame(378, 0, 369, 126, ATTACK_DRAW_HEIGHT, 0.4),
+    ]),
     hitHurt: animation(sprites.catGirl.hitHurt, 95, [
       scaledFrame(0, 0, 100, 126, BODY_DRAW_HEIGHT, 0.55),
       scaledFrame(139, 11, 85, 115, BODY_DRAW_HEIGHT, 0.48),
@@ -211,6 +225,8 @@ const fighters = [
       jump: "ArrowUp",
       punch: "KeyJ",
       kick: "KeyK",
+      dashAttack: "KeyU",
+      energyWave: "KeyI",
     },
   }),
 ];
@@ -581,7 +597,7 @@ function drawHud() {
   ctx.fillText(formatAction(fighters[1].action), WIDTH - 28, 78);
   drawHealthBar(WIDTH - 268, 88, 240, fighters[1]);
   ctx.fillStyle = "#cbd5e1";
-  ctx.fillText("Arrow keys move/jump  RShift run  J punch  K kick", WIDTH - 28, 124);
+  ctx.fillText("Arrow keys move/jump  RShift run  J/K hit  U dash  I wave", WIDTH - 28, 124);
 }
 
 function drawHealthBar(x, y, width, fighter) {
